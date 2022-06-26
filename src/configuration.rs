@@ -26,7 +26,7 @@ pub struct DatabaseSettings {
     pub port: u16,
     pub host: String,
     pub database_name: String,
-    pub requare_ssl: bool,
+    pub require_ssl: bool,
 }
 
 /// The possible runtime environment for our application.
@@ -87,7 +87,7 @@ impl DatabaseSettings {
     }
 
     pub fn without_db(&self) -> PgConnectOptions {
-        let ssl_mode = if self.requare_ssl {
+        let ssl_mode = if self.require_ssl {
             PgSslMode::Require
         } else {
             PgSslMode::Prefer
