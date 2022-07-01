@@ -45,8 +45,8 @@ pub async fn subscribe(
         Ok(subscriber_id) => subscriber_id,
         Err(_) => return HttpResponse::InternalServerError().finish(),
     };
-    let subscribtion_token = generate_subscription_token();
-    if store_token(&pool, subscriber_id, &subscribtion_token)
+    let subscription_token = generate_subscription_token();
+    if store_token(&pool, subscriber_id, &subscription_token)
         .await
         .is_err()
     {
@@ -56,7 +56,7 @@ pub async fn subscribe(
         &email_client,
         new_subscriber,
         &base_url.0,
-        &subscribtion_token,
+        &subscription_token,
     )
     .await
     .is_err()
