@@ -2,7 +2,6 @@ use crate::domain::{NewSubscriber, SubscriberEmail, SubscriberName};
 use crate::email_client::EmailClient;
 use crate::startup::ApplicationBaseUrl;
 use actix_web::{web, HttpResponse};
-use chrono::Utc;
 use rand::distributions::Alphanumeric;
 use rand::{thread_rng, Rng};
 use sqlx::{PgPool, Postgres, Transaction};
