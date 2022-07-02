@@ -78,9 +78,9 @@ async fn subscribe_persist_the_new_subscriber() {
 async fn subscribe_returns_a_400_when_fields_are_present_but_invalid() {
     let app = spawn_app().await;
     let test_cases = vec![
-        ("name=le%20guin", "missing the email"),
-        ("email=ursula_le_guin%40gmail.com", "missing the name"),
-        ("", "missing both name and email"),
+        ("name=&email=ursula_le_guin%40gmail.com", "empty name"),
+        ("name=Ursula&email=u", "empty email"),
+        ("name=Ursula&email=definitely-not-an-email", "invalid email"),
     ];
     for (invalid_body, error_message) in test_cases {
         let response = app.post_subscriptions(invalid_body.into()).await;
@@ -88,7 +88,7 @@ async fn subscribe_returns_a_400_when_fields_are_present_but_invalid() {
             400,
             response.status().as_u16(),
             // Additional customised error message on test failure
-            "The API did not fail with 400 Bad Request when the payload was {}.",
+            "The API did not return a 400 Bad Request when the payload was {}.",
             error_message
         );
     }
@@ -112,4 +112,20 @@ async fn subscribe_returns_a_400_when_data_is_missing() {
             error_message
         );
     }
+}
+
+#[tokio::test]
+async fn subscribe_fails_if_there_is_a_fatal_database_error() {
+    // Arrange
+    let app = spawn_app().await;
+    let body = "name=le%20guin&email=ursula_le_guin%40gmail.com";
+    // Sabotage the database
+    sqlx::query!("ALTER TABLE subscription_tokens DROP COLUMN subscription_token;",)
+        .execute(&app.db_pool)
+        .await
+        .unwrap();
+    // Act
+    let response = app.post_subscriptions(body.into()).await;
+    // Assert
+    assert_eq!(response.status().as_u16(), 500);
 }
