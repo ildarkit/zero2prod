@@ -108,7 +108,7 @@ async fn non_existing_user_is_rejected() {
     let password = Uuid::new_v4().to_string();
 
     let response = reqwest::Client::new()
-        .post(&format!("{}/newsletter", &app.address))
+        .post(&format!("{}/newsletters", &app.address))
         .basic_auth(username, Some(password))
         .json(&serde_json::json!({
             "title": "Newsletter title",
