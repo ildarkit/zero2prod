@@ -165,7 +165,7 @@ fn verify_password_hash(
         .context("Failed to parse hash in PHC string format.")
         .map_err(PublishError::UnexpectedError)?;
 
-    Argon2::default()`
+    Argon2::default()
         .verify_password(
             password_candidate.expose_secret().as_bytes(),
             &expected_password_hash,
