@@ -14,7 +14,6 @@ name = "zero2prod"
 
 [dependencies]
 actix-web = "=4.0.0"
-reqwest = { version = "0.11.11", default-features = false, features = ["json", "rustls-tls"] }
 serde = { version = "1", features = ["derive"] }
 tokio = { version = "=1", features = ["macros", "rt-multi-thread", "rt"] }
 config = "0.13.1"
@@ -49,6 +48,11 @@ hex = "0.4.3"
 version = "0.6.0"
 default-features = false
 features = ["runtime-actix-rustls", "macros", "postgres", "uuid", "chrono", "migrate", "offline"]
+
+[dependencies.reqwest]
+version = "0.11.11"
+default-features = false
+features = ["json", "rustls-tls", "cookies"]
 
 [dev-dependencies]
 linkify = "0.8.1"
