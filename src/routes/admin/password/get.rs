@@ -1,7 +1,12 @@
+use crate::session_state::TypedSession;
+use crate::utils;
 use actix_web::http::header::ContentType;
 use actix_web::HttpResponse;
 
-pub async fn change_password_form() -> Result<HttpResponse, actix_web::Error> {
+pub async fn change_password_form(session: TypedSession) -> Result<HttpResponse, actix_web::Error> {
+    if session.get_user_id().map_err(utils::e500)?.is_none() {
+        return Ok(utils::see_other("/login"));
+    };
     Ok(HttpResponse::Ok().content_type(ContentType::html()).body(
         r#"<!DOCTYPE html>
 <html lang="en">
