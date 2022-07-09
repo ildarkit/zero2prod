@@ -73,3 +73,38 @@ async fn current_password_must_be_valid() {
     let html_page = app.get_change_password_html().await;
     assert!(html_page.contains("<p><i>The current password is incorrect.</i></p>"));
 }
+
+#[tokio::test]
+async fn new_password_must_contain_at_least_13_and_no_longer_then_128_chars() {
+    let app = helpers::spawn_app().await;
+    let short_new_password = Uuid::new_v4().to_string();
+    let (short_new_password, _) = short_new_password.split_at(12);
+    let mut long_new_password = short_new_password.to_owned();
+    for _ in 0..11 {
+        long_new_password.push_str(short_new_password);
+    }
+
+    let new_passwords = vec![short_new_password, &long_new_password];
+
+    app.post_login(&serde_json::json!({
+        "username": &app.test_user.username,
+        "password": &app.test_user.password
+    }))
+    .await;
+
+    for new_password in new_passwords {
+        let response = app
+            .post_change_password(&serde_json::json!({
+                "current_password": &app.test_user.password,
+                "new_password": &new_password,
+                "new_password_check": &new_password,
+            }))
+            .await;
+        helpers::assert_is_redirect_to(&response, "/admin/password");
+
+        let html_page = app.get_change_password_html().await;
+        assert!(html_page.contains(
+            "<p><i>The password must contain at least 13 and no more then 128 chars.</i></p>"
+        ));
+    }
+}

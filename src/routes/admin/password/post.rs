@@ -6,12 +6,25 @@ use actix_web::{web, HttpResponse};
 use actix_web_flash_messages::FlashMessage;
 use secrecy::{ExposeSecret, Secret};
 use sqlx::PgPool;
+use validator::HasLen;
 
 #[derive(serde::Deserialize)]
 pub struct FormData {
     current_password: Secret<String>,
     new_password: Secret<String>,
     new_password_check: Secret<String>,
+}
+
+impl FormData {
+    pub fn new_password_length_check(&self) -> Result<(), AuthError> {
+        match self.new_password.expose_secret().length() {
+            13..=127 => Ok(()),
+            _ => Err(anyhow::anyhow!(
+                "The password must contain at least 13 and no more then 128 chars."
+            )
+            .into()),
+        }
+    }
 }
 
 pub async fn change_password(
@@ -36,8 +49,12 @@ pub async fn change_password(
         .map_err(utils::e500)?;
     let credentials = Credentials {
         username,
-        password: form.0.current_password,
+        password: form.0.current_password.clone(),
     };
+    if let Err(e) = form.new_password_length_check() {
+        FlashMessage::error(e.to_string()).send();
+        return Ok(utils::see_other("/admin/password"));
+    }
     if let Err(e) = authentication::validate_credentials(credentials, &pool).await {
         return match e {
             AuthError::InvalidCredentials(_) => {
