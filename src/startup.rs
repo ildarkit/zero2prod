@@ -74,13 +74,13 @@ pub fn get_connection_pool(configuration: &DatabaseSettings) -> PgPool {
 
 pub struct ApplicationBaseUrl(pub String);
 
-async pub fn run(
+pub async fn run(
     listener: TcpListener,
     db_pool: PgPool,
     email_client: EmailClient,
     base_url: String,
     hmac_secret: HmacSecret,
-    redis_uri: Secret<String>
+    redis_uri: Secret<String>,
 ) -> Result<Server, anyhow::Error> {
     let db_pool = web::Data::new(db_pool);
     let email_client = web::Data::new(email_client);
@@ -93,7 +93,10 @@ async pub fn run(
     let server = HttpServer::new(move || {
         App::new()
             .wrap(message_framework.clone())
-            .wrap(SessionMiddleware::new(redis_store.clone(), secret_key.clone()))
+            .wrap(SessionMiddleware::new(
+                redis_store.clone(),
+                secret_key.clone(),
+            ))
             .wrap(TracingLogger::default())
             .route("/health_check", web::get().to(routes::health_check))
             .route("/subscriptions", web::post().to(routes::subscribe))
