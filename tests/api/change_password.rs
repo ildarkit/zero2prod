@@ -104,7 +104,7 @@ async fn new_password_must_contain_at_least_13_and_no_longer_then_128_chars() {
 
         let html_page = app.get_change_password_html().await;
         assert!(html_page.contains(
-            "<p><i>The password must contain at least 13 and no more then 128 chars.</i></p>"
+            "<p><i>The password must contain at least 13 and shorten then 128 chars.</i></p>"
         ));
     }
 }

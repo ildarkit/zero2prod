@@ -20,7 +20,7 @@ impl FormData {
         match self.new_password.expose_secret().length() {
             13..=127 => Ok(()),
             _ => Err(anyhow::anyhow!(
-                "The password must contain at least 13 and no more then 128 chars."
+                "The password must contain at least 13 and shorter then 128 chars."
             )
             .into()),
         }
