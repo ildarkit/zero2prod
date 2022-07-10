@@ -1,4 +1,5 @@
 use crate::helpers;
+use crate::helpers::{assert_is_redirect_to, spawn_app};
 use uuid::Uuid;
 
 #[tokio::test]
@@ -107,4 +108,39 @@ async fn new_password_must_contain_at_least_13_and_no_longer_then_128_chars() {
             "<p><i>The password must contain at least 13 and shorten then 128 chars.</i></p>"
         ));
     }
+}
+
+#[tokio::test]
+async fn changing_password_works() {
+    let app = spawn_app().await;
+    let new_password = Uuid::new_v4().to_string();
+
+    let login_body = serde_json::json!({
+        "username": &app.test_user.username,
+        "password": &app.test_user.password
+    });
+    let response = app.post_login(&login_body).await;
+    assert_is_redirect_to(&response, "/admin/dashboard");
+
+    let response = app
+        .post_change_password(&serde_json::json!({
+            "current_password": &app.test_user.password,
+            "new_password": &new_password,
+            "new_password_check": &new_password
+        }))
+        .await;
+    assert_is_redirect_to(&response, "/admin/password");
+
+    let response = app.post_logout().await;
+    assert_is_redirect_to(&response, "/login");
+
+    let html_page = app.get_login_html().await;
+    assert!(html_page.contains("<p><i>You have successfully logged out.</i></p>"));
+
+    let login_body = serde_json::json!({
+        "username": &app.test_user.username,
+        "password": &new_password
+    });
+    let response = app.post_login(&login_body).await;
+    assert_is_redirect_to(&response, "/admin/dashboard");
 }
