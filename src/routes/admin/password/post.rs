@@ -1,6 +1,5 @@
-use crate::authentication::{self, AuthError, Credentials};
+use crate::authentication::{self, AuthError, Credentials, UserId};
 use crate::routes::admin::dashboard;
-use crate::session_state::TypedSession;
 use crate::utils;
 use actix_web::{web, HttpResponse};
 use actix_web_flash_messages::FlashMessage;
@@ -20,7 +19,7 @@ impl FormData {
         match self.new_password.expose_secret().length() {
             13..=127 => Ok(()),
             _ => Err(anyhow::anyhow!(
-                "The password must contain at least 13 and shorter then 128 chars."
+                "The password must contain at least 13 and shorten then 128 chars."
             )
             .into()),
         }
@@ -29,14 +28,10 @@ impl FormData {
 
 pub async fn change_password(
     form: web::Form<FormData>,
-    session: TypedSession,
     pool: web::Data<PgPool>,
+    user_id: web::ReqData<UserId>,
 ) -> Result<HttpResponse, actix_web::Error> {
-    let user_id = session.get_user_id().map_err(utils::e500)?;
-    if user_id.is_none() {
-        return Ok(utils::see_other("/login"));
-    };
-    let user_id = user_id.unwrap();
+    let user_id = user_id.into_inner();
     if form.new_password.expose_secret() != form.new_password_check.expose_secret() {
         FlashMessage::error(
             "You entered two different new passwords - the field values must match.",
@@ -44,7 +39,7 @@ pub async fn change_password(
         .send();
         return Ok(utils::see_other("/admin/password"));
     }
-    let username = dashboard::get_username(user_id, &pool)
+    let username = dashboard::get_username(*user_id, &pool)
         .await
         .map_err(utils::e500)?;
     let credentials = Credentials {
