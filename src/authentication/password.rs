@@ -1,3 +1,4 @@
+use crate::authentication::UserId;
 use crate::telemetry::spawn_blocking_with_tracing;
 use anyhow::Context;
 use argon2::password_hash::SaltString;
@@ -90,7 +91,7 @@ pub async fn get_stored_credentials(
 
 #[tracing::instrument(name = "Change password", skip(password, pool))]
 pub async fn change_password(
-    user_id: uuid::Uuid,
+    user_id: UserId,
     password: Secret<String>,
     pool: &PgPool,
 ) -> Result<(), anyhow::Error> {
@@ -104,7 +105,7 @@ pub async fn change_password(
         WHERE user_id = $2
         "#,
         password_hash.expose_secret(),
-        user_id
+        *user_id
     )
     .execute(pool)
     .await
