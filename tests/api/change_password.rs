@@ -76,7 +76,7 @@ async fn current_password_must_be_valid() {
 }
 
 #[tokio::test]
-async fn new_password_must_contain_at_least_13_and_no_longer_then_128_chars() {
+async fn new_password_must_contain_at_least_13_and_shorten_then_128_chars() {
     let app = helpers::spawn_app().await;
     let short_new_password = Uuid::new_v4().to_string();
     let (short_new_password, _) = short_new_password.split_at(12);
