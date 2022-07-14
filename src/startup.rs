@@ -113,7 +113,8 @@ pub async fn run(
                     .route("/dashboard", web::get().to(routes::admin_dashboard))
                     .route("/password", web::get().to(routes::change_password_form))
                     .route("/password", web::post().to(routes::change_password))
-                    .route("/logout", web::post().to(routes::log_out)),
+                    .route("/logout", web::post().to(routes::log_out))
+                    .route("/newsletters", web::get().to(routes::send_newsletters_form)),
             )
             .app_data(db_pool.clone())
             .app_data(email_client.clone())
