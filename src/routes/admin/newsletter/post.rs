@@ -34,7 +34,9 @@ pub async fn publish_newsletter(
     email_client: web::Data<EmailClient>,
     user_id: web::ReqData<UserId>,
 ) -> Result<HttpResponse, actix_web::Error> {
-    let subscribers = get_confirmed_subscribers(&pool).await?;
+    let subscribers = get_confirmed_subscribers(&pool)
+        .await
+        .map_err(utils::e500)?;
     for subscriber in subscribers {
         match subscriber {
             Ok(subscriber) => {
@@ -48,7 +50,8 @@ pub async fn publish_newsletter(
                     .await
                     .with_context(|| {
                         format!("Failed to send newsletter issue to {}", subscriber.email)
-                    })?;
+                    })
+                    .map_err(utils::e500)?;
             }
             Err(error) => {
                 tracing::warn!(error.cause_chain = ?error, "Skipping a confirmed subscriber. \
