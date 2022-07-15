@@ -34,6 +34,7 @@ pub async fn publish_newsletter(
     email_client: web::Data<EmailClient>,
     user_id: web::ReqData<UserId>,
 ) -> Result<HttpResponse, actix_web::Error> {
+    tracing::Span::current().record("user_id", &tracing::field::display(&user_id));
     let subscribers = get_confirmed_subscribers(&pool)
         .await
         .map_err(utils::e500)?;
