@@ -40,7 +40,7 @@ pub async fn send_newsletters_form(
                 <input
                     type="text"
                     placeholder="Enter content"
-                    name="text"
+                    name="text_content"
                 >
             </label>
             <br>
@@ -48,7 +48,7 @@ pub async fn send_newsletters_form(
                 <input
                     type="text"
                     placeholder="Enter content"
-                    name="html"
+                    name="html_content"
                 >
             </label>
             <br>

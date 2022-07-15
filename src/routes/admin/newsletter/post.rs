@@ -10,13 +10,8 @@ use sqlx::PgPool;
 #[derive(serde::Deserialize)]
 pub struct BodyData {
     title: String,
-    content: Content,
-}
-
-#[derive(serde::Deserialize)]
-pub struct Content {
-    html: String,
-    text: String,
+    text_content: String,
+    html_content: String,
 }
 
 struct ConfirmedSubscriber {
@@ -34,7 +29,7 @@ pub async fn publish_newsletter(
     email_client: web::Data<EmailClient>,
     user_id: web::ReqData<UserId>,
 ) -> Result<HttpResponse, actix_web::Error> {
-    tracing::Span::current().record("user_id", &tracing::field::display(&user_id));
+    tracing::Span::current().record("user_id", &tracing::field::display(&*user_id));
     let subscribers = get_confirmed_subscribers(&pool)
         .await
         .map_err(utils::e500)?;
@@ -45,8 +40,8 @@ pub async fn publish_newsletter(
                     .send_email(
                         &subscriber.email,
                         &body.title,
-                        &body.content.html,
-                        &body.content.text,
+                        &body.html_content,
+                        &body.text_content,
                     )
                     .await
                     .with_context(|| {
