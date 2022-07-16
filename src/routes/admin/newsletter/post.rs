@@ -1,7 +1,7 @@
 use crate::authentication::UserId;
 use crate::domain::SubscriberEmail;
 use crate::email_client::EmailClient;
-use crate::idempotency::IdempotencyKey;
+use crate::idempotency::{self, IdempotencyKey};
 use crate::utils;
 use actix_web::{web, HttpResponse};
 use actix_web_flash_messages::FlashMessage;
@@ -31,6 +31,7 @@ pub async fn publish_newsletter(
     email_client: web::Data<EmailClient>,
     user_id: web::ReqData<UserId>,
 ) -> Result<HttpResponse, actix_web::Error> {
+    let user_id = user_id.into_inner();
     tracing::Span::current().record("user_id", &tracing::field::display(*user_id));
 
     let FormData {
@@ -40,6 +41,12 @@ pub async fn publish_newsletter(
         idempotency_key,
     } = form.0;
     let idempotency_key: IdempotencyKey = idempotency_key.try_into().map_err(utils::e400)?;
+    if let Some(saved_response) = idempotency::get_saved_response(&pool, &idempotency_key, *user_id)
+        .await
+        .map_err(utils::e500)?
+    {
+        return Ok(saved_response);
+    }
     let subscribers = get_confirmed_subscribers(&pool)
         .await
         .map_err(utils::e500)?;
