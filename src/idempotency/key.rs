@@ -1,10 +1,10 @@
 #[derive(Debug)]
 pub struct IdempotencyKey(String);
 
-impl TryForm<String> for IdempotencyKey {
+impl TryFrom<String> for IdempotencyKey {
     type Error = anyhow::Error;
 
-    fn try_form(s: String) -> Result<Self, Self::Error> {
+    fn try_from(s: String) -> Result<Self, Self::Error> {
         if s.is_empty() {
             anyhow::bail!("The idempotency key cannot be empty");
         }

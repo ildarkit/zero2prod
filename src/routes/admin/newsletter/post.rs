@@ -1,6 +1,7 @@
 use crate::authentication::UserId;
 use crate::domain::SubscriberEmail;
 use crate::email_client::EmailClient;
+use crate::idempotency::IdempotencyKey;
 use crate::utils;
 use actix_web::{web, HttpResponse};
 use actix_web_flash_messages::FlashMessage;
@@ -8,7 +9,7 @@ use anyhow::Context;
 use sqlx::PgPool;
 
 #[derive(serde::Deserialize)]
-pub struct BodyData {
+pub struct FormData {
     title: String,
     text_content: String,
     html_content: String,
@@ -21,16 +22,24 @@ struct ConfirmedSubscriber {
 
 #[tracing::instrument(
 name = "Publish a newsletter issue",
-skip(body, pool, email_client),
+skip(form, pool, email_client),
 fields(user_id=tracing::field::Empty)
 )]
 pub async fn publish_newsletter(
-    body: web::Form<BodyData>,
+    form: web::Form<FormData>,
     pool: web::Data<PgPool>,
     email_client: web::Data<EmailClient>,
     user_id: web::ReqData<UserId>,
 ) -> Result<HttpResponse, actix_web::Error> {
     tracing::Span::current().record("user_id", &tracing::field::display(*user_id));
+
+    let FormData {
+        title,
+        text_content,
+        html_content,
+        idempotency_key,
+    } = form.0;
+    let idempotency_key: IdempotencyKey = idempotency_key.try_into().map_err(utils::e400)?;
     let subscribers = get_confirmed_subscribers(&pool)
         .await
         .map_err(utils::e500)?;
@@ -38,12 +47,7 @@ pub async fn publish_newsletter(
         match subscriber {
             Ok(subscriber) => {
                 email_client
-                    .send_email(
-                        &subscriber.email,
-                        &body.title,
-                        &body.html_content,
-                        &body.text_content,
-                    )
+                    .send_email(&subscriber.email, &title, &html_content, &text_content)
                     .await
                     .with_context(|| {
                         format!("Failed to send newsletter issue to {}", subscriber.email)
