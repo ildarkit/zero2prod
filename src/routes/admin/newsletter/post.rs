@@ -12,6 +12,7 @@ pub struct BodyData {
     title: String,
     text_content: String,
     html_content: String,
+    idempotency_key: String,
 }
 
 struct ConfirmedSubscriber {
