@@ -68,7 +68,11 @@ pub async fn publish_newsletter(
         }
     }
     FlashMessage::info("Newsletter issue started successfully.").send();
-    Ok(utils::see_other("/admin/newsletters"))
+    let response = utils::see_other("/admin/newsletters");
+    let response = idempotency::save_response(&pool, &idempotency_key, *user_id, response)
+        .await
+        .map_err(utils::e500)?;
+    Ok(response)
 }
 
 #[tracing::instrument(name = "Get confirmed subscribers", skip(pool))]

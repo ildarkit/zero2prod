@@ -15,7 +15,7 @@ struct HeaderPairRecord {
 
 impl PgHasArrayType for HeaderPairRecord {
     fn array_type_info() -> PgTypeInfo {
-        sqlx::postgres::PgTypeInfo::with_name("_header_pair")
+        PgTypeInfo::with_name("_header_pair")
     }
 }
 
