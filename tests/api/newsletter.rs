@@ -26,7 +26,7 @@ async fn newsletter_are_not_delivered_to_unconfirmed_subscribers() {
         "text_content": "Newsletter body as plain text",
         "html_content": "<p>Newsletter body as HTML</p>",
     });
-    let response = app.post_newsletters(newsletter_request_body).await;
+    let response = app.post_newsletters(&newsletter_request_body).await;
     helpers::assert_is_redirect_to(&response, "/admin/newsletters");
 }
 
@@ -54,7 +54,7 @@ async fn newsletters_are_delivered_to_confirmed_subscribers() {
         "text_content": "Newsletter body as plain text",
         "html_content": "<p>Newsletter body as HTML</p>",
     });
-    let response = app.post_newsletters(newsletter_request_body).await;
+    let response = app.post_newsletters(&newsletter_request_body).await;
     helpers::assert_is_redirect_to(&response, "/admin/newsletters");
 
     let html_page = app.get_admin_newsletters_html().await;
@@ -85,7 +85,7 @@ async fn newsletters_returns_400_for_invalid_data() {
     ];
 
     for (invalid_body, error_message) in test_cases {
-        let response = app.post_newsletters(invalid_body).await;
+        let response = app.post_newsletters(&invalid_body).await;
         assert_eq!(
             400,
             response.status().as_u16(),
@@ -100,7 +100,7 @@ async fn request_missing_authorization_are_rejected() {
     let app = helpers::spawn_app().await;
 
     let response = app
-        .post_newsletters(serde_json::json!({
+        .post_newsletters(&serde_json::json!({
             "title": "Newsletter tittle",
             "text_content": "Newsletter body as plain text",
             "html_content": "<p>Newsletter body as HTML</p>",
@@ -123,7 +123,7 @@ async fn non_existing_user_is_rejected() {
     app.post_login(&login_body).await;
 
     let response = app
-        .post_newsletters(serde_json::json!({
+        .post_newsletters(&serde_json::json!({
         "title": "Newsletter title",
         "text_content": "Newsletter body as plain text",
         "html_content": "<p>Newsletter body as HTML</p>",
@@ -146,7 +146,7 @@ async fn invalid_password_is_rejected() {
     app.post_login(&login_body).await;
 
     let response = app
-        .post_newsletters(serde_json::json!({
+        .post_newsletters(&serde_json::json!({
         "title": "Newsletter title",
         "text_content": "Newsletter body as plain text",
         "html_content": "<p>Newsletter body as HTML</p>",
@@ -154,6 +154,39 @@ async fn invalid_password_is_rejected() {
         .await;
 
     helpers::assert_is_redirect_to(&response, "/login");
+}
+
+#[tokio::test]
+async fn newsletter_creation_is_idempotent() {
+    let app = helpers::spawn_app().await;
+    create_confirmed_subscriber(&app).await;
+    app.test_user.login(&app).await;
+
+    Mock::given(path("/"))
+        .and(method("POST"))
+        .respond_with(ResponseTemplate::new(200))
+        .expect(1)
+        .mount(&app.email_server)
+        .await;
+
+    let newsletter_request_body = serde_json::json!({
+        "title": "Newsletter title",
+        "text_content": "Newsletter body as plain text",
+        "html_content": "<p>Newsletter body as HTML</p>",
+        "idempotency_key": uuid::Uuid::new_v4().to_string()
+    });
+    let response = app.post_newsletters(&newsletter_request_body).await;
+    helpers::assert_is_redirect_to(&response, "/admin/newsletters");
+
+    let html_page = app.get_admin_newsletters_html().await;
+    assert!(html_page.contains("<p><i>Newsletter issue started successfully.</i></p>"));
+
+    //retry
+    let response = app.post_newsletters(&newsletter_request_body).await;
+    helpers::assert_is_redirect_to(&response, "/admin/newsletters");
+
+    let html_page = app.get_admin_newsletters_html().await;
+    assert!(html_page.contains("<p><i>Newsletter issue started successfully.</i></p>"));
 }
 
 async fn create_unconfirmed_subscriber(app: &TestApp) -> ConfirmationLinks {

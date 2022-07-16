@@ -73,10 +73,10 @@ impl TestApp {
         ConfirmationLinks { html, plain_text }
     }
 
-    pub async fn post_newsletters(&self, body: serde_json::Value) -> reqwest::Response {
+    pub async fn post_newsletters(&self, body: &serde_json::Value) -> reqwest::Response {
         self.api_client
             .post(&format!("{}/admin/newsletters", &self.address))
-            .form(&body)
+            .form(body)
             .send()
             .await
             .expect("Failed to execute request.")
@@ -196,6 +196,14 @@ impl TestUser {
         .execute(pool)
         .await
         .expect("Failed to store test user.");
+    }
+
+    pub async fn login(&self, app: &TestApp) {
+        let login_body = serde_json::json!({
+            "username": &self.username,
+            "password": &self.password
+        });
+        app.post_login(&login_body).await;
     }
 }
 
