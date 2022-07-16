@@ -186,9 +186,6 @@ async fn newsletter_creation_is_idempotent() {
     //retry
     let response = app.post_newsletters(&newsletter_request_body).await;
     helpers::assert_is_redirect_to(&response, "/admin/newsletters");
-
-    let html_page = app.get_admin_newsletters_html().await;
-    assert!(html_page.contains("<p><i>Newsletter issue started successfully.</i></p>"));
 }
 
 async fn create_unconfirmed_subscriber(app: &TestApp) -> ConfirmationLinks {
