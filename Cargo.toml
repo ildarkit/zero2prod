@@ -60,3 +60,4 @@ features = ["json", "rustls-tls", "cookies"]
 
 [dev-dependencies]
 linkify = "0.8.1"
+serde_urlencoded = "0.7.1"

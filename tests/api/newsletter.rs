@@ -1,8 +1,10 @@
 use crate::helpers::{self, ConfirmationLinks, TestApp};
+use fake::faker::{internet::en::SafeEmail, name::en::Name};
+use fake::Fake;
 use std::time::Duration;
 use uuid::Uuid;
 use wiremock::matchers::{any, method, path};
-use wiremock::{Mock, ResponseTemplate};
+use wiremock::{Mock, MockBuilder, ResponseTemplate};
 
 #[tokio::test]
 async fn newsletter_are_not_delivered_to_unconfirmed_subscribers() {
@@ -219,8 +221,57 @@ async fn concurrent_form_submission_is_handled_gracefully() {
     );
 }
 
+fn when_sending_an_email() -> MockBuilder {
+    Mock::given(path("/")).and(method("POST"))
+}
+
+#[tokio::test]
+async fn transient_errors_do_not_cause_duplicate_deliveries_on_retries() {
+    let app = helpers::spawn_app().await;
+    let newsletter_request_body = serde_json::json!({
+    "title": "Newsletter title",
+    "text_content": "Newsletter body as plain text",
+    "html_content": "<p>Newsletter body as HTML</p>",
+    "idempotency_key": uuid::Uuid::new_v4().to_string()
+    });
+    create_confirmed_subscriber(&app).await;
+    create_confirmed_subscriber(&app).await;
+    app.test_user.login(&app).await;
+
+    when_sending_an_email()
+        .respond_with(ResponseTemplate::new(200))
+        .up_to_n_times(1)
+        .expect(1)
+        .mount(&app.email_server)
+        .await;
+    when_sending_an_email()
+        .respond_with(ResponseTemplate::new(500))
+        .up_to_n_times(1)
+        .expect(1)
+        .mount(&app.email_server)
+        .await;
+
+    let response = app.post_newsletters(&newsletter_request_body).await;
+    assert_eq!(response.status().as_u16(), 500);
+
+    when_sending_an_email()
+        .respond_with(ResponseTemplate::new(200))
+        .expect(1)
+        .named("Delivery retry")
+        .mount(&app.email_server)
+        .await;
+    let response = app.post_newsletters(&newsletter_request_body).await;
+    assert_eq!(response.status().as_u16(), 303);
+}
+
 async fn create_unconfirmed_subscriber(app: &TestApp) -> ConfirmationLinks {
-    let body = "name=le%20guin&email=ursula_le_guin%40gmail.com";
+    let name: String = Name().fake();
+    let email: String = SafeEmail().fake();
+    let body = serde_urlencoded::to_string(&serde_json::json!({
+        "name": name,
+        "email": email
+    }))
+    .unwrap();
 
     let _mock_guard = Mock::given(path("/"))
         .and(method("POST"))
