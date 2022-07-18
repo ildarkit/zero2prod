@@ -41,16 +41,16 @@ pub async fn publish_newsletter(
         idempotency_key,
     } = form.0;
     let idempotency_key: IdempotencyKey = idempotency_key.try_into().map_err(utils::e400)?;
-    match idempotency::try_processing(&pool, &idempotency_key, *user_id)
+    let transaction = match idempotency::try_processing(&pool, &idempotency_key, *user_id)
         .await
         .map_err(utils::e500)?
     {
-        NextAction::StartProcessing => {}
+        NextAction::StartProcessing(t) => t,
         NextAction::ReturnSavedResponse(saved_response) => {
             success_message().send();
             return Ok(saved_response);
         }
-    }
+    };
     let subscribers = get_confirmed_subscribers(&pool)
         .await
         .map_err(utils::e500)?;
@@ -73,7 +73,7 @@ pub async fn publish_newsletter(
     }
     success_message().send();
     let response = utils::see_other("/admin/newsletters");
-    let response = idempotency::save_response(&pool, &idempotency_key, *user_id, response)
+    let response = idempotency::save_response(transaction, &idempotency_key, *user_id, response)
         .await
         .map_err(utils::e500)?;
     Ok(response)
