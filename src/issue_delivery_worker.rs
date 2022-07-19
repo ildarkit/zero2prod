@@ -1,5 +1,6 @@
 use crate::domain::SubscriberEmail;
 use crate::email_client::EmailClient;
+use crate::{configuration::Settings, startup};
 use actix_web_lab::web::Spa;
 use sqlx::{PgPool, Postgres, Transaction};
 use std::time::Duration;
@@ -150,4 +151,20 @@ async fn worker_loop(pool: PgPool, email_client: EmailClient) -> Result<(), anyh
             Ok(ExecutionOutcome::TaskCompleted) => {}
         }
     }
+}
+
+pub async fn run_worker_until_stopped(configuration: Settings) -> Result<(), anyhow::Error> {
+    let connection_pool = startup::get_connection_pool(&configuration.database);
+    let sender_email = configuration
+        .email_client
+        .sender()
+        .expect("Invalid sender email address");
+    let timeout = configuration.email_client.timeout();
+    let email_client = EmailClient::new(
+        configuration.email_client.base_url,
+        sender_email,
+        configuration.email_client.authorization_token,
+        timeout,
+    );
+    worker_loop(connection_pool, email_client).await
 }
