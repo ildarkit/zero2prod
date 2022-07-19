@@ -18,7 +18,35 @@ async fn try_execute_task(pool: &PgPool, email_client: &EmailClient) -> Result<(
         Span::current()
             .record("newsletter_issue_id", &display(issue_id))
             .record("subscriber_email", &display(&email));
-        // TODO: send email
+        match SubscriberEmail::parse(email.clone()) {
+            Ok(email) => {
+                let issue = get_issue(pool, issue_id).await?;
+                if let Err(e) = email_client
+                    .send_email(
+                        &email,
+                        &issue.title,
+                        &issue.html_content,
+                        &issue.text_content,
+                    )
+                    .await
+                {
+                    tracing::error!(
+                        error.cause_chain = ?e,
+                        error.message = %e,
+                        "Failed to deliver issue to a confirmed subscriber. \
+                        Skipping."
+                    );
+                }
+            }
+            Err(e) => {
+                tracing::error!(
+                    error.cause_chain = ?e,
+                    error.message = %e,
+                    "Skipping a confirmed subscriber. \
+                    Their stored contact details are invalid"
+                );
+            }
+        }
         delete_task(transaction, issue_id, &email).await?;
     }
     Ok(())
